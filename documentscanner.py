@@ -3,11 +3,9 @@ import numpy as np
 import imutils
 from imutils.perspective import four_point_transform
 
-# ----------------------------------------------------
-# 0. AUTO-DETECT PHONE CAMERA STREAM FROM COMMON URLS
-# ----------------------------------------------------
+base_ip = "IP_address_here" 
 
-base_ip = "192.168.0.105"   # ← CHANGE THIS TO YOUR IP (from IP Webcam app)
+# Change this to your phone's IP address shown in the IP Webcam app 
 
 urls = [
     f"http://{base_ip}:8080/video",
@@ -17,7 +15,8 @@ urls = [
 
 cam_url = None
 
-print("\n🔍 Trying to connect to your phone camera...\n")
+print("\n Trying to connect to your phone camera...\n")
+
 for url in urls:
     print("Testing:", url)
     cap = cv2.VideoCapture(url)
@@ -25,19 +24,17 @@ for url in urls:
     cap.release()
     if ret:
         cam_url = url
-        print("✅ CONNECTED using:", url, "\n")
+        print("CONNECTED using:", url, "\n")
         break
 
 if cam_url is None:
-    print("\n❌ Could NOT connect to camera. Check:")
+    print("\n Could NOT connect to camera. Check:")
     print("- Phone & laptop must be on SAME WiFi")
     print("- IP Webcam app must be running")
     print("- IP address must match exactly")
     exit()
 
-# ----------------------------------------------------
-# 1. CAPTURE IMAGE
-# ----------------------------------------------------
+# For Capturing of image
 
 cap = cv2.VideoCapture(cam_url)
 print("Press SPACE to capture the document.")
@@ -45,7 +42,7 @@ print("Press SPACE to capture the document.")
 while True:
     ret, frame = cap.read()
     if not ret:
-        print("❌ Lost connection! Re-open IP Webcam.")
+        print("\n Lost connection! Re-open IP Webcam.")
         break
 
     cv2.imshow("Phone Camera Preview", frame)
@@ -60,22 +57,21 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 
-# ----------------------------------------------------
-# 2. DOCUMENT SCANNER PIPELINE
-# ----------------------------------------------------
+# Document scanning process
 
-# Resize small for faster detection
+
+# Resize to a smaller size for faster detection
 height, width = image.shape[:2]
 ratio = height / 500.0
 image_small = imutils.resize(image, height=500)
 
-# Grayscale
+# Grayscale conversion 
 gray = cv2.cvtColor(image_small, cv2.COLOR_BGR2GRAY)
 
-# Blur
+# Guassian Blur to reduce noise and improve edge detection
 blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-# Edges
+# Edge detection
 edges = cv2.Canny(blurred, 50, 200)
 
 # Find contours
@@ -93,10 +89,10 @@ for c in cnts:
         break
 
 if docCnt is None:
-    print("❌ Could not detect document edges.")
+    print("Could not detect document edges.")
     exit()
 
-# Draw outline
+# Draw outline of detected document
 outline = image_small.copy()
 cv2.drawContours(outline, [docCnt], -1, (0, 255, 0), 2)
 cv2.imshow("Detected Document Outline", outline)
@@ -105,10 +101,10 @@ cv2.waitKey(0)
 # Warp perspective to original resolution
 warped = four_point_transform(orig, docCnt.reshape(4, 2) * ratio)
 
-# Convert to grayscale
+# Convert to grayscale for thresholding
 warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
 
-# Apply adaptive threshold (clean scan look)
+# Apply adaptive threshold for clean scan like look
 scanned = cv2.adaptiveThreshold(
     warped_gray,
     255,
@@ -118,11 +114,11 @@ scanned = cv2.adaptiveThreshold(
     10
 )
 
-# Show final scanned document
-cv2.imshow("📄 Scanned Document", imutils.resize(scanned, height=700))
+# Display final scanned image
+cv2.imshow("Scanned Document", imutils.resize(scanned, height=700))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-# Save
+# Save Scanned Image 
 cv2.imwrite("scanned_phone_doc.jpg", scanned)
-print("\n💾 Saved as scanned_phone_doc.jpg")
+print("\n Saved as scanned_phone_doc.jpg")
